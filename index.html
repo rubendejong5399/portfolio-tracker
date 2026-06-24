@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portfolio Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#ffffff;--bg2:#f7f7f5;--bg3:#f0f0ed;
+    --text:#1a1a1a;--text2:#6b6b6b;--text3:#9b9b9b;
+    --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);
+    --green:#1D9E75;--red:#D85A30;--blue:#378ADD;--purple:#7F77DD;
+    --r:10px;--r2:14px;
+  }
+  @media(prefers-color-scheme:dark){
+    :root{
+      --bg:#1a1a1a;--bg2:#242424;--bg3:#2e2e2e;
+      --text:#f0f0ed;--text2:#a0a09d;--text3:#6b6b6b;
+      --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+    }
+  }
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+  .app{max-width:900px;margin:0 auto;padding:2rem 1.5rem}
+  h1{font-size:22px;font-weight:600;letter-spacing:-0.4px;margin-bottom:2px}
+  .subtitle{font-size:13px;color:var(--text2);margin-bottom:2rem}
+  .fx-bar{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--r);padding:10px 14px;margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text2)}
+  .fx-chip{background:var(--bg3);border-radius:6px;padding:3px 8px;color:var(--text);font-size:12px;font-weight:500}
+  .fx-status{margin-left:auto;display:flex;align-items:center;gap:5px}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+  .dot.loading{background:#f0a500;animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .tabs{display:flex;gap:0;border-bottom:0.5px solid var(--border2);margin-bottom:1.5rem}
+  .tab{padding:10px 18px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--text2);border-bottom:2px solid transparent;transition:all .15s}
+  .tab.active{color:var(--text);border-bottom-color:var(--text)}
+  .tab:hover:not(.active){color:var(--text)}
+  .panel{display:none}.panel.active{display:block}
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.5rem}
+  .metric{background:var(--bg2);border-radius:var(--r);padding:14px}
+  .metric-label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+  .metric-value{font-size:22px;font-weight:600;color:var(--text);line-height:1}
+  .metric-value.pos{color:var(--green)}.metric-value.neg{color:var(--red)}
+  .metric-sub{font-size:11px;color:var(--text3);margin-top:3px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+  @media(max-width:600px){.grid2{grid-template-columns:1fr}}
+  .card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--r2);padding:1.25rem}
+  .card-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:1rem}
+  .chart-wrap{position:relative;height:200px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:7px 10px;color:var(--text2);font-weight:500;border-bottom:0.5px solid var(--border2);font-size:12px}
+  th.r,td.r{text-align:right}
+  td{padding:9px 10px;border-bottom:0.5px solid var(--border);color:var(--text)}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:var(--bg2)}
+  .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;letter-spacing:.2px}
+  .bd{background:#dbeeff;color:#0c447c}.bc{background:#d5f0e6;color:#085041}
+  @media(prefers-color-scheme:dark){.bd{background:#0c447c;color:#b5d4f4}.bc{background:#085041;color:#9fe1cb}}
+  .upload-zone{border:1.5px dashed var(--border2);border-radius:var(--r2);padding:2.5rem 2rem;text-align:center;cursor:pointer;transition:all .15s;margin-bottom:1rem;position:relative}
+  .upload-zone:hover,.upload-zone.drag{background:var(--bg2);border-color:var(--blue)}
+  .upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .uz-icon{font-size:32px;margin-bottom:10px;display:block}
+  .uz-title{font-size:14px;font-weight:600;margin-bottom:4px}
+  .uz-sub{font-size:12px;color:var(--text2)}
+  .uz-ok{color:var(--green);font-weight:600}
+  .cost-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:0.5px solid var(--border);font-size:13px}
+  .cost-row:last-child{border-bottom:none}
+  .cost-label{color:var(--text2)}
+  .progress-bg{background:var(--bg3);border-radius:4px;height:5px;margin-top:6px;overflow:hidden}
+  .progress-fill{height:5px;border-radius:4px;transition:width .5s}
+  .fx-table{width:100%;border-collapse:collapse;font-size:13px}
+  .fx-table th,.fx-table td{padding:8px 10px;border-bottom:0.5px solid var(--border);text-align:left}
+  .fx-table th{color:var(--text2);font-weight:500;font-size:12px}
+  .fx-table tr:last-child td{border-bottom:none}
+  .info-box{background:var(--bg2);border-left:3px solid var(--blue);border-radius:0 var(--r) var(--r) 0;padding:12px 14px;font-size:13px;color:var(--text2);margin-bottom:1.5rem;line-height:1.6}
+  .info-box strong{color:var(--text)}
+  .empty{text-align:center;padding:3rem 1rem;color:var(--text2)}
+  .empty-icon{font-size:36px;display:block;margin-bottom:10px;opacity:.4}
+  .tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600}
+  .tag-loss{background:#fce8e8;color:#a32d2d}.tag-gain{background:#d5f0e6;color:#085041}
+  @media(prefers-color-scheme:dark){.tag-loss{background:#a32d2d;color:#f7c1c1}.tag-gain{background:#085041;color:#9fe1cb}}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Portfolio Tracker</h1>
+  <p class="subtitle">DEGIRO · Bitvavo · Live wisselkoersen</p>
+
+  <div class="fx-bar" id="fx-bar">
+    <span>Wisselkoersen (ECB):</span>
+    <span class="fx-chip" id="fx-usd">USD —</span>
+    <span class="fx-chip" id="fx-gbp">GBP —</span>
+    <span class="fx-chip" id="fx-chf">CHF —</span>
+    <span class="fx-chip" id="fx-jpy">JPY —</span>
+    <span class="fx-status"><span class="dot loading" id="fx-dot"></span><span id="fx-label">Koersen laden...</span></span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('overview')">Overzicht</button>
+    <button class="tab" onclick="switchTab('holdings')">Posities</button>
+    <button class="tab" onclick="switchTab('costs')">Kosten & valuta</button>
+    <button class="tab" onclick="switchTab('import')">Importeer</button>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div id="overview" class="panel active">
+    <div class="metrics" id="metrics">
+      <div class="metric"><div class="metric-label">Totale waarde</div><div class="metric-value" id="m-value">—</div><div class="metric-sub" id="m-value-sub"></div></div>
+      <div class="metric"><div class="metric-label">Ingelegd</div><div class="metric-value" id="m-invested">—</div></div>
+      <div class="metric"><div class="metric-label">Rendement</div><div class="metric-value" id="m-return">—</div><div class="metric-sub" id="m-return-sub"></div></div>
+      <div class="metric"><div class="metric-label">Transactiekosten</div><div class="metric-value" id="m-costs">—</div></div>
+      <div class="metric"><div class="metric-label">Valutakosten</div><div class="metric-value" id="m-fxcosts">—</div><div class="metric-sub">geschat 0.25%</div></div>
+      <div class="metric"><div class="metric-label">Dividend</div><div class="metric-value pos" id="m-dividend">—</div></div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">Verdeling posities</div>
+        <div class="chart-wrap"><canvas id="pieChart" role="img" aria-label="Verdeling portfolio per positie">Laad data om de grafiek te zien.</canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Per broker</div>
+        <div id="alloc-bars" style="padding-top:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOLDINGS -->
+  <div id="holdings" class="panel">
+    <div id="holdings-content">
+      <div class="empty"><span class="empty-icon">📭</span>Importeer een CSV om posities te zien.</div>
+    </div>
+  </div>
+
+  <!-- COSTS -->
+  <div id="costs" class="panel">
+    <div id="costs-content">
+      <div class="empty"><span class="empty-icon">🧾</span>Importeer een CSV om kosten te zien.</div>
+    </div>
+  </div>
+
+  <!-- IMPORT -->
+  <div id="import" class="panel">
+    <div class="info-box">
+      <strong>DEGIRO:</strong> Activiteiten → Exporteer transacties → CSV downloaden.<br>
+      <strong>Bitvavo:</strong> Wallet → Transactiegeschiedenis → Exporteer → CSV.<br>
+      Je data blijft lokaal in je browser — er wordt niets geüpload.
+    </div>
+
+    <label class="upload-zone" id="dz-d" ondragover="this.classList.add('drag')" ondragleave="this.classList.remove('drag')">
+      <input type="file" accept=".csv" id="file-d" onchange="handleFile(event,'degiro')">
+      <span class="uz-icon">🏦</span>
+      <div class="uz-title">DEGIRO CSV</div>
+      <div class="uz-sub" id="sub-d">Klik of sleep je exportbestand hier</div>
+    </label>
+
+    <label class="upload-zone" id="dz-b" ondragover="this.classList.add('drag')" ondragleave="this.classList.remove('drag')">
+      <input type="file" accept=".csv" id="file-b" onchange="handleFile(event,'bitvavo')">
+      <span class="uz-icon">₿</span>
+      <div class="uz-title">Bitvavo CSV</div>
+      <div class="uz-sub" id="sub-b">Klik of sleep je exportbestand hier</div>
+    </label>
+
+    <div id="import-log" style="font-size:12px;color:var(--text2);margin-top:1rem;line-height:1.8"></div>
+  </div>
+</div>
+
+<script>
+const state = { degiro:[], bitvavo:[], fx:{USD:1,GBP:1,CHF:1,JPY:1,BTC:1,ETH:1}, pieChart:null, fxLoaded:false };
+
+// Load ECB exchange rates
+async function loadFX(){
+  try{
+    const r = await fetch('https://api.frankfurter.app/latest?from=EUR&to=USD,GBP,CHF,JPY,SEK,NOK,DKK,CAD,AUD,HKD,SGD,CNY');
+    const d = await r.json();
+    if(d.rates){
+      Object.assign(state.fx, d.rates);
+      document.getElementById('fx-usd').textContent = 'USD '+d.rates.USD.toFixed(4);
+      document.getElementById('fx-gbp').textContent = 'GBP '+d.rates.GBP.toFixed(4);
+      document.getElementById('fx-chf').textContent = 'CHF '+d.rates.CHF.toFixed(4);
+      document.getElementById('fx-jpy').textContent = 'JPY '+d.rates.JPY.toFixed(2);
+      document.getElementById('fx-dot').classList.remove('loading');
+      document.getElementById('fx-label').textContent = 'Live · '+new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+      state.fxLoaded = true;
+      render();
+    }
+  } catch(e){
+    document.getElementById('fx-label').textContent = 'Offline – EUR koersen';
+    document.getElementById('fx-dot').style.background='var(--red)';
+  }
+}
+
+function toEUR(amount, currency){
+  if(!currency||currency==='EUR') return amount;
+  const rate = state.fx[currency.toUpperCase()];
+  return rate ? amount/rate : amount;
+}
+
+function switchTab(id){
+  const ids=['overview','holdings','costs','import'];
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',ids[i]===id));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function parseCSV(text){
+  const lines = text.trim().split(/\r?\n/);
+  if(lines.length<2) return [];
+  const sep = lines[0].includes(';')?';':',';
+  const headers = lines[0].split(sep).map(h=>h.replace(/^"|"$/g,'').trim());
+  return lines.slice(1).filter(l=>l.trim()).map(line=>{
+    const vals=[]; let cur='',inQ=false;
+    for(let i=0;i<line.length;i++){
+      const c=line[i];
+      if(c==='"'){inQ=!inQ;}
+      else if((c===','||c===';')&&!inQ){vals.push(cur.trim());cur='';}
+      else cur+=c;
+    }
+    vals.push(cur.trim());
+    const row={};
+    headers.forEach((h,i)=>{row[h]=(vals[i]||'').replace(/^"|"$/g,'').trim();});
+    return row;
+  });
+}
+
+function parseMoney(s){
+  if(!s) return 0;
+  const c=s.replace(/[€$£¥\s]/g,'').replace(',','.');
+  return parseFloat(c)||0;
+}
+function parseQty(s){
+  if(!s) return 0;
+  return parseFloat(s.replace(',','.'))||0;
+}
+function fmt(n,d=2){
+  return '€'+Math.abs(n).toLocaleString('nl-NL',{minimumFractionDigits:d,maximumFractionDigits:d});
+}
+
+function detectCurrency(row){
+  const c = row['Lokale waarde']||row['Local value']||row['Currency']||row['Valuta']||'';
+  const keys = Object.keys(row).join(' ');
+  if(keys.includes('USD')||c.includes('USD')) return 'USD';
+  if(keys.includes('GBP')||c.includes('GBP')) return 'GBP';
+  if(keys.includes('CHF')||c.includes('CHF')) return 'CHF';
+  // check column with currency code
+  for(const k of Object.keys(row)){
+    const v = row[k];
+    if(/^[A-Z]{3}$/.test(v) && v!=='EUR') return v;
+  }
+  return 'EUR';
+}
+
+function handleFile(e,broker){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const rows=parseCSV(ev.target.result);
+    if(broker==='degiro') processDEGIRO(rows,file.name);
+    else processBitvavo(rows,file.name);
+  };
+  reader.readAsText(file);
+}
+
+function processDEGIRO(rows,fname){
+  const txs=[];
+  rows.forEach(r=>{
+    const product=r['Product']||r['Naam']||r['naam']||'';
+    const isin=r['ISIN']||r['isin']||'';
+    const qty=parseQty(r['Aantal']||r['Quantity']||'0');
+    const price=parseMoney(r['Koers']||r['Price']||'0');
+    const value=parseMoney(r['Waarde']||r['Value']||r['Totaal']||'0');
+    const costs=Math.abs(parseMoney(r['Transactiekosten en/of']||r['Transactiekosten']||r['Fees']||'0'));
+    const type=(r['Omschrijving']||r['Type']||'').toLowerCase();
+    const currency=r['Muntsoort']||r['Currency']||detectCurrency(r)||'EUR';
+    const localVal=parseMoney(r['Lokale waarde']||r['Local value']||'0');
+    const isDividend=type.includes('dividend');
+    const dividend=isDividend?Math.abs(value):0;
+    // estimate FX cost: if currency != EUR, DEGIRO charges ~0.25% on local value
+    const fxCost = currency!=='EUR' ? Math.abs(localVal)*0.0025 : 0;
+    if(product||value) txs.push({broker:'degiro',product,isin,qty,price,value:Math.abs(value),costs,dividend,type,currency,localVal,fxCost});
+  });
+  state.degiro=txs;
+  document.getElementById('sub-d').innerHTML='<span class="uz-ok">✓ '+fname+' — '+txs.length+' transacties</span>';
+  addLog('DEGIRO: '+txs.length+' transacties ingeladen');
+  render();
+}
+
+function processBitvavo(rows,fname){
+  const txs=[];
+  rows.forEach(r=>{
+    const coin=r['Currency']||r['Munt']||r['Asset']||r['Symbol']||'';
+    const type=(r['Type']||r['Omschrijving']||'').toLowerCase();
+    const qty=parseQty(r['Amount']||r['Bedrag']||r['Quantity']||'0');
+    const eurVal=Math.abs(parseMoney(r['EUR amount']||r['EUR bedrag']||r['Value (EUR)']||r['Waarde (EUR)']||'0'));
+    const costs=Math.abs(parseMoney(r['Fee']||r['Kosten']||r['fee']||'0'));
+    const feeCur=r['Fee Currency']||r['Kosten valuta']||coin;
+    // Bitvavo charges fee in crypto; estimate EUR value
+    const fxCost = feeCur!=='EUR' ? costs*(eurVal/Math.max(qty,0.000001)) : 0;
+    if(coin||eurVal) txs.push({broker:'bitvavo',product:coin,isin:'',qty:Math.abs(qty),price:qty?eurVal/Math.abs(qty):0,value:eurVal,costs,dividend:0,type,currency:coin,localVal:qty,fxCost});
+  });
+  state.bitvavo=txs;
+  document.getElementById('sub-b').innerHTML='<span class="uz-ok">✓ '+fname+' — '+txs.length+' transacties</span>';
+  addLog('Bitvavo: '+txs.length+' transacties ingeladen');
+  render();
+}
+
+function addLog(msg){
+  document.getElementById('import-log').innerHTML+=`<div>→ ${msg}</div>`;
+}
+
+function render(){
+  const all=[...state.degiro,...state.bitvavo];
+  if(!all.length) return;
+
+  let totalInvested=0,totalCosts=0,totalDividend=0,totalFXCosts=0;
+  const holdings={};
+  const fxByPair={};
+
+  all.forEach(t=>{
+    const name=t.product||'Onbekend';
+    if(!holdings[name]) holdings[name]={name,broker:t.broker,qty:0,invested:0,costs:0,dividend:0,fxCost:0,currency:t.currency,txCount:0};
+    const h=holdings[name];
+    const isBuy=t.type.includes('koop')||t.type.includes('buy')||(!t.type&&t.qty>0);
+    const isSell=t.type.includes('verk')||t.type.includes('sell');
+    const isDividend=t.type.includes('dividend');
+    if(isDividend){h.dividend+=t.dividend;}
+    else if(isSell){h.qty-=Math.abs(t.qty);h.costs+=t.costs;}
+    else{h.qty+=t.qty;h.invested+=t.value;h.costs+=t.costs;}
+    h.fxCost+=t.fxCost;
+    h.txCount++;
+    totalCosts+=t.costs;
+    totalDividend+=t.dividend;
+    totalFXCosts+=t.fxCost;
+    // track FX by currency pair
+    if(t.currency&&t.currency!=='EUR'){
+      const pair=t.currency+'/EUR';
+      if(!fxByPair[pair]) fxByPair[pair]={pair,volume:0,fxCost:0,txCount:0};
+      fxByPair[pair].volume+=t.value;
+      fxByPair[pair].fxCost+=t.fxCost;
+      fxByPair[pair].txCount++;
+    }
+  });
+
+  Object.values(holdings).forEach(h=>{
+    h.avgPrice=h.qty>0?h.invested/h.qty:0;
+    h.value=Math.max(0,h.qty*h.avgPrice);
+  });
+
+  const totalValue=Object.values(holdings).reduce((s,h)=>s+h.value,0);
+  const gain=totalValue-totalInvested+totalDividend;
+  const netInvested=Object.values(holdings).reduce((s,h)=>s+h.invested,0);
+  const pct=netInvested>0?((totalValue-netInvested)/netInvested)*100:0;
+
+  document.getElementById('m-value').textContent=fmt(totalValue);
+  document.getElementById('m-invested').textContent=fmt(netInvested);
+  const ri=document.getElementById('m-return');
+  ri.textContent=(pct>=0?'+':'')+pct.toFixed(2)+'%';
+  ri.className='metric-value '+(pct>=0?'pos':'neg');
+  document.getElementById('m-return-sub').textContent=(pct>=0?'+':'')+fmt(totalValue-netInvested);
+  document.getElementById('m-costs').textContent=fmt(totalCosts);
+  document.getElementById('m-fxcosts').textContent=fmt(totalFXCosts);
+  document.getElementById('m-dividend').textContent=fmt(totalDividend);
+
+  renderPie(holdings);
+  renderAllocBars(holdings,totalValue);
+  renderHoldings(holdings,totalValue);
+  renderCosts(holdings,totalCosts,totalFXCosts,totalDividend,fxByPair,netInvested);
+}
+
+function renderPie(holdings){
+  const items=Object.values(holdings).filter(h=>h.value>0).sort((a,b)=>b.value-a.value).slice(0,12);
+  const colors=['#1D9E75','#378ADD','#D85A30','#7F77DD','#D4537E','#BA7517','#639922','#888780','#E24B4A','#5DCAA5','#AFA9EC','#F0997B'];
+  if(state.pieChart) state.pieChart.destroy();
+  const ctx=document.getElementById('pieChart').getContext('2d');
+  state.pieChart=new Chart(ctx,{
+    type:'doughnut',
+    data:{labels:items.map(h=>h.name),datasets:[{data:items.map(h=>parseFloat(h.value.toFixed(2))),backgroundColor:colors,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' €'+c.raw.toLocaleString('nl-NL',{minimumFractionDigits:2})}}}}
+  });
+}
+
+function renderAllocBars(holdings,total){
+  const byBroker={DEGIRO:0,Bitvavo:0};
+  Object.values(holdings).forEach(h=>{
+    if(h.broker==='degiro') byBroker.DEGIRO+=h.value;
+    else byBroker.Bitvavo+=h.value;
+  });
+  const colors={DEGIRO:' #378ADD',Bitvavo:'#1D9E75'};
+  document.getElementById('alloc-bars').innerHTML=Object.entries(byBroker).map(([k,v])=>{
+    const pct=total>0?(v/total*100):0;
+    return `<div style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+        <span style="font-weight:500">${k}</span>
+        <span style="color:var(--text2)">€${v.toLocaleString('nl-NL',{maximumFractionDigits:0})} · ${pct.toFixed(1)}%</span>
+      </div>
+      <div class="progress-bg"><div class="progress-fill" style="width:${pct}%;background:${colors[k]}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderHoldings(holdings,total){
+  const items=Object.values(holdings).filter(h=>h.value>0||h.qty!==0).sort((a,b)=>b.value-a.value);
+  if(!items.length){document.getElementById('holdings-content').innerHTML='<div class="empty"><span class="empty-icon">📭</span>Geen posities gevonden.</div>';return;}
+  document.getElementById('holdings-content').innerHTML=`<table>
+    <thead><tr>
+      <th>Naam</th><th>Broker</th><th>Valuta</th><th class="r">Aantal</th><th class="r">Gem. prijs</th><th class="r">Waarde</th><th class="r">% porto</th>
+    </tr></thead>
+    <tbody>${items.map(h=>{
+      const pct=total>0?(h.value/total*100):0;
+      const bd=h.broker==='degiro';
+      const qty=h.qty<1?h.qty.toFixed(6):h.qty.toFixed(2);
+      const avg=h.avgPrice<1?'€'+h.avgPrice.toFixed(6):'€'+h.avgPrice.toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});
+      const val='€'+h.value.toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});
+      return `<tr>
+        <td><strong>${h.name}</strong></td>
+        <td><span class="badge ${bd?'bd':'bc'}">${bd?'DEGIRO':'Bitvavo'}</span></td>
+        <td style="color:var(--text2)">${h.currency||'EUR'}</td>
+        <td class="r">${qty}</td>
+        <td class="r">${avg}</td>
+        <td class="r" style="font-weight:500">${val}</td>
+        <td class="r" style="color:var(--text2)">${pct.toFixed(1)}%</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+function renderCosts(holdings,totalCosts,totalFXCosts,totalDividend,fxByPair,netInvested){
+  const byCosts={DEGIRO:0,Bitvavo:0};
+  const byFX={DEGIRO:0,Bitvavo:0};
+  Object.values(holdings).forEach(h=>{
+    const k=h.broker==='degiro'?'DEGIRO':'Bitvavo';
+    byCosts[k]+=h.costs; byFX[k]+=h.fxCost;
+  });
+  const totalAll=totalCosts+totalFXCosts;
+  const netReturn=totalAll>0?((totalDividend/totalAll)*100):0;
+  const costDrag=netInvested>0?(totalAll/netInvested*100):0;
+
+  document.getElementById('costs-content').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem">
+      <div class="card">
+        <div class="card-title">Transactiekosten</div>
+        ${Object.entries(byCosts).map(([k,v])=>`
+          <div class="cost-row"><span class="cost-label">${k}</span><span style="font-weight:500">${fmt(v)}</span></div>`).join('')}
+        <div class="cost-row" style="margin-top:4px"><span style="font-weight:600">Totaal</span><span style="font-weight:600;color:var(--red)">${fmt(totalCosts)}</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Valutakosten (geschat 0.25%)</div>
+        ${Object.entries(byFX).map(([k,v])=>`
+          <div class="cost-row"><span class="cost-label">${k}</span><span style="font-weight:500">${fmt(v)}</span></div>`).join('')}
+        <div class="cost-row" style="margin-top:4px"><span style="font-weight:600">Totaal</span><span style="font-weight:600;color:var(--red)">${fmt(totalFXCosts)}</span></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-title">Valutakosten per paar</div>
+      ${Object.keys(fxByPair).length?`<table class="fx-table">
+        <thead><tr><th>Paar</th><th>Transacties</th><th class="r">Volume</th><th class="r">Geschatte kosten</th><th class="r">Kostenpct.</th></tr></thead>
+        <tbody>${Object.values(fxByPair).map(f=>`<tr>
+          <td style="font-weight:500">${f.pair}</td>
+          <td style="color:var(--text2)">${f.txCount}</td>
+          <td class="r">${fmt(f.volume)}</td>
+          <td class="r" style="color:var(--red)">${fmt(f.fxCost)}</td>
+          <td class="r"><span class="tag tag-loss">0.25%</span></td>
+        </tr>`).join('')}</tbody>
+      </table>`:'<div style="color:var(--text2);font-size:13px;padding:8px 0">Geen niet-EUR transacties gevonden.</div>'}
+    </div>
+
+    <div class="card">
+      <div class="card-title">Samenvatting</div>
+      <div class="cost-row"><span class="cost-label">Totale kosten (tx + valuta)</span><span style="color:var(--red);font-weight:600">${fmt(totalAll)}</span></div>
+      <div class="cost-row"><span class="cost-label">Dividend ontvangen</span><span style="color:var(--green);font-weight:600">${fmt(totalDividend)}</span></div>
+      <div class="cost-row"><span class="cost-label">Netto kostenlast op inleg</span><span style="font-weight:500">${costDrag.toFixed(3)}%</span></div>
+      <div class="cost-row"><span class="cost-label">Dividend dekt kosten voor</span><span style="font-weight:500">${Math.min(100,netReturn).toFixed(1)}%</span></div>
+      <div class="cost-row"><span class="cost-label">Netto kosten na dividend</span><span style="font-weight:600">${fmt(Math.max(0,totalAll-totalDividend))}</span></div>
+    </div>
+  `;
+}
+
+loadFX();
+</script>
+</body>
+</html>
