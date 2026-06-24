@@ -169,24 +169,43 @@ const state = { degiro:[], bitvavo:[], fx:{USD:1,GBP:1,CHF:1,JPY:1,BTC:1,ETH:1},
 
 // Load ECB exchange rates
 async function loadFX(){
-  try{
-    const r = await fetch('https://api.frankfurter.app/latest?from=EUR&to=USD,GBP,CHF,JPY,SEK,NOK,DKK,CAD,AUD,HKD,SGD,CNY');
-    const d = await r.json();
-    if(d.rates){
-      Object.assign(state.fx, d.rates);
-      document.getElementById('fx-usd').textContent = 'USD '+d.rates.USD.toFixed(4);
-      document.getElementById('fx-gbp').textContent = 'GBP '+d.rates.GBP.toFixed(4);
-      document.getElementById('fx-chf').textContent = 'CHF '+d.rates.CHF.toFixed(4);
-      document.getElementById('fx-jpy').textContent = 'JPY '+d.rates.JPY.toFixed(2);
-      document.getElementById('fx-dot').classList.remove('loading');
-      document.getElementById('fx-label').textContent = 'Live · '+new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
-      state.fxLoaded = true;
-      render();
+  const apis = [
+    async () => {
+      const r = await fetch('https://api.exchangerate-api.com/v4/latest/EUR');
+      const d = await r.json(); return d.rates;
+    },
+    async () => {
+      const r = await fetch('https://open.er-api.com/v6/latest/EUR');
+      const d = await r.json(); return d.rates;
+    },
+    async () => {
+      const r = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/eur.json');
+      const d = await r.json();
+      const raw = d.eur;
+      const out = {};
+      Object.keys(raw).forEach(k => out[k.toUpperCase()] = raw[k]);
+      return out;
     }
-  } catch(e){
-    document.getElementById('fx-label').textContent = 'Offline – EUR koersen';
-    document.getElementById('fx-dot').style.background='var(--red)';
+  ];
+  for(const api of apis){
+    try{
+      const rates = await api();
+      if(rates && rates.USD){
+        Object.assign(state.fx, rates);
+        document.getElementById('fx-usd').textContent = 'USD '+rates.USD.toFixed(4);
+        document.getElementById('fx-gbp').textContent = 'GBP '+(rates.GBP||'—');
+        document.getElementById('fx-chf').textContent = 'CHF '+(rates.CHF||'—');
+        document.getElementById('fx-jpy').textContent = 'JPY '+(rates.JPY ? rates.JPY.toFixed(2) : '—');
+        document.getElementById('fx-dot').classList.remove('loading');
+        document.getElementById('fx-label').textContent = 'Live · '+new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+        state.fxLoaded = true;
+        render();
+        return;
+      }
+    } catch(e){ continue; }
   }
+  document.getElementById('fx-label').textContent = 'Offline – EUR koersen';
+  document.getElementById('fx-dot').style.background='var(--red)';
 }
 
 function toEUR(amount, currency){
